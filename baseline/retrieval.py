@@ -34,10 +34,11 @@ def timer(name):
 
 
 #Sparse Retrieval based on BM25
-class SparseRetrieval_BM25P:
+class SparseRetrieval_BM25:
     """Passage 파일을 불러오고 BM25를 선언"""
-    def __init__(self, tokenize_fn,data_path: Optional[str] = "./data/",
+    def __init__(self, tokenize_fn,data_path: Optional[str] = "../data/",
         context_path: Optional[str] = "wikipedia_documents.json",
+        file_suffix: Optional[str] = '',
     ) -> NoReturn:
         self.data_path = data_path
         with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
@@ -49,11 +50,12 @@ class SparseRetrieval_BM25P:
         self.ids = list(range(len(self.contexts)))
         self.BM25 = None
         self.tokenizer = tokenize_fn
+        self.file_suffix = file_suffix
 
-    def get_sparse_embedding_bm25(self) -> NoReturn:
+    def get_sparse_embedding_bm25(self, bm25_type: Optional[str] = 'plus') -> NoReturn:
         """Create or import embeddings"""
 
-        pickle_name = f"sparse_embedding_bm25.bin"
+        pickle_name = f"sparse_embedding_bm25_{self.file_suffix}.bin"
         emd_path = os.path.join(self.data_path, pickle_name)
 
         if os.path.isfile(emd_path):
@@ -63,8 +65,20 @@ class SparseRetrieval_BM25P:
 
         else:
             print("Build passage BM25 embedding")
-            tokenized = [self.tokenizer(i) for i in self.contexts]
-            self.BM25 = BM25Plus(tokenized)
+            if tokenizer == None:
+                tokenized = [i.split() for i in self.contexts]
+            else:
+                tokenized = [self.tokenizer(i) for i in self.contexts]
+            
+            if bm25_type == 'plus':
+                self.BM25 = BM25Plus(tokenized)
+            elif bm25_type == 'okapi':
+                self.BM25 = BM25Okapi(tokenized)
+            elif bm25_type == 'l':
+                self.BM25 = BM25L(tokenized)
+            else:
+                raise ValueError('Plug in a proper bm25 type')  
+            
 
             with open(emd_path, "wb") as file:
                 pickle.dump(self.BM25, file)
@@ -92,7 +106,7 @@ class SparseRetrieval_BM25P:
                     "question": example["question"],
                     "id": example["id"],
                     "context_id": doc_indices[idx],
-                    "context": " ".join([self.contexts[pid] for pid in doc_indices[idx]]),
+                    "context": "<SEP>".join([self.contexts[pid] for pid in doc_indices[idx]]),
                 }
                 if "context" in example.keys() and "answers" in example.keys():
                     tmp["original_context"] = example["context"]
@@ -109,8 +123,8 @@ class SparseRetrieval_BM25P:
         """top k 개의 score&indice들에 대한 pickle 파일 저장 혹은 불러오기 작업 수행"""
 
         # 저장할 pickle 파일 및 경로 지정
-        score_path = os.path.join(self.data_path, "BM25_score.bin")      
-        indice_path = os.path.join(self.data_path, "BM25_indice.bin")
+        score_path = os.path.join(self.data_path, f"BM25_score_{self.file_suffix}.bin")      
+        indice_path = os.path.join(self.data_path, f"BM25_indice_{self.file_suffix}.bin")
 
         # Pickle 파일 존재 시에 불러오기
         if os.path.isfile(score_path) and os.path.isfile(indice_path):
@@ -123,7 +137,10 @@ class SparseRetrieval_BM25P:
         # Pickle 파일 생성 전일 시에 생성
         else:
             print("Build BM25 pickle")
-            tokenized_queries= [self.tokenizer(i) for i in queries]        
+            if tokenizer == None:
+                tokenized_queries = [i.split() for i in queries]
+            else:
+                tokenized_queries = [self.tokenizer(i) for i in queries]      
             doc_scores = []
             doc_indices = []
 
@@ -163,8 +180,8 @@ class SparseRetrieval_TFIDF:
 
         # Transform by vectorizer
         self.tfidfv = TfidfVectorizer(
-            # tokenizer=tokenize_fn,
-            # ngram_range=(1, 1),
+            tokenizer=tokenize_fn,
+            ngram_range=(1, 4),
             # max_features=50000,
         )
 
@@ -173,8 +190,8 @@ class SparseRetrieval_TFIDF:
     def get_sparse_embedding(self) -> NoReturn:
         """Create or import embeddings"""
 
-        pickle_name = f"sparse_embedding.bin"
-        tfidfv_name = f"tfidv.bin"
+        pickle_name = f"sparse_embeddingadd.bin"
+        tfidfv_name = f"tfidvadd.bin"
         emd_path = os.path.join(self.data_path, pickle_name)
         tfidfv_path = os.path.join(self.data_path, tfidfv_name)
 
@@ -254,93 +271,93 @@ class SparseRetrieval_TFIDF:
             doc_indices.append(sorted_result.tolist()[:k])
         return doc_scores, doc_indices
 
-# class DenseRetrieval(Dense):
-#     def __init__(self, **kwargs):
-#         super(DenseRetrieval, self).__init__(**kwargs)
+class DenseRetrieval(Dense):
+    def __init__(self, **kwargs):
+        super(DenseRetrieval, self).__init__(**kwargs)
 
-#     def retrieve(
-#         self, query_or_dataset: Union[str, Dataset], topk: Optional[int] = 1
-#     ) -> Union[Tuple[List, List], pd.DataFrame]:
+    def retrieve(
+        self, query_or_dataset: Union[str, Dataset], topk: Optional[int] = 1
+    ) -> Union[Tuple[List, List], pd.DataFrame]:
 
-#         assert self.p_encoder and self.q_encoder is not None, "get_dense_encoders() 먼저 수행"
+        assert self.p_encoder and self.q_encoder is not None, "get_dense_encoders() 먼저 수행"
 
-#         if isinstance(query_or_dataset, Dataset):
-#             total = []
-#             with timer("query exhaustive search"):
-#                 doc_scores, doc_indices = self.get_relevant_doc_bulk_dpr(
-#                     query_or_dataset["question"], k=topk)
-#             for idx, example in enumerate(
-#                 tqdm(query_or_dataset, desc="Dense Retriever: ")
-#             ):
+        if isinstance(query_or_dataset, Dataset):
+            total = []
+            with timer("query exhaustive search"):
+                doc_scores, doc_indices = self.get_relevant_doc_bulk_dpr(
+                    query_or_dataset["question"], k=topk)
+            for idx, example in enumerate(
+                tqdm(query_or_dataset, desc="Dense Retriever: ")
+            ):
                 
-#                 tmp = {
-#                     "question": example["question"],
-#                     "id": example["id"],
-#                     "context_id": doc_indices[idx],
-#                     "context": " ".join([self.contexts[pid] for pid in doc_indices[idx]]),
-#                 }
-#                 if "context" in example.keys() and "answers" in example.keys():
-#                     # if validation set
-#                     tmp["original_context"] = example["context"]
-#                     tmp["answers"] = example["answers"]
+                tmp = {
+                    "question": example["question"],
+                    "id": example["id"],
+                    "context_id": doc_indices[idx],
+                    "context": " ".join([self.contexts[pid] for pid in doc_indices[idx]]),
+                }
+                if "context" in example.keys() and "answers" in example.keys():
+                    # if validation set
+                    tmp["original_context"] = example["context"]
+                    tmp["answers"] = example["answers"]
                 
-#                 total.append(tmp)
+                total.append(tmp)
 
-#             cqas = pd.DataFrame(total)
-#             # cqas.to_csv('retrieved_contexts.csv') # if neccessary
-#             return cqas 
+            cqas = pd.DataFrame(total)
+            # cqas.to_csv('retrieved_contexts.csv') # if neccessary
+            return cqas 
 
-#     def get_relevant_doc_bulk_dpr(
-#         self, queries, k= 1, args=None, p_encoder=None, q_encoder=None
-#     ):
-#         """top k 개의 score & indice를 반환"""
-#         if args is None:
-#             args = self.args
-#         if p_encoder is None:
-#             p_encoder = self.p_encoder
-#         if q_encoder is None:
-#             q_encoder = self.q_encoder
+    def get_relevant_doc_bulk_dpr(
+        self, queries, k= 1, args=None, p_encoder=None, q_encoder=None
+    ):
+        """top k 개의 score & indice를 반환"""
+        if args is None:
+            args = self.args
+        if p_encoder is None:
+            p_encoder = self.p_encoder
+        if q_encoder is None:
+            q_encoder = self.q_encoder
         
-#         p_encoder.to('cuda')
-#         q_encoder.to('cuda')
+        p_encoder.to('cuda')
+        q_encoder.to('cuda')
 
-#         doc_scores = []
-#         doc_indices = []
+        doc_scores = []
+        doc_indices = []
 
-#         with torch.no_grad():
-#             p_encoder.eval()
-#             q_encoder.eval()
+        with torch.no_grad():
+            p_encoder.eval()
+            q_encoder.eval()
 
-#             p_embs = []
-#             for p in self.contexts:
-#                 p_inputs = self.tokenizer(
-#                     p,
-#                     padding="max_length",
-#                     truncation=True,
-#                     return_tensors="pt"
-#                 ).to("cuda")
+            p_embs = []
+            for p in self.contexts:
+                p_inputs = self.tokenizer(
+                    p,
+                    padding="max_length",
+                    truncation=True,
+                    return_tensors="pt"
+                ).to("cuda")
             
-#                 p_emb = p_encoder(**p_inputs).to("cpu").numpy()
-#                 p_embs.append(p_emb)
-#             p_embs = torch.Tensor(p_embs).squeeze()
+                p_emb = p_encoder(**p_inputs).to("cpu").numpy()
+                p_embs.append(p_emb)
+            p_embs = torch.Tensor(p_embs).squeeze()
 
-#             q_embs = []
-#             for q in queries:
-#                 q_inputs = self.tokenizer(
-#                     q,
-#                     padding="max_length",
-#                     truncation=True,
-#                     return_tensors="pt"
-#                 ).to("cuda")
+            q_embs = []
+            for q in queries:
+                q_inputs = self.tokenizer(
+                    q,
+                    padding="max_length",
+                    truncation=True,
+                    return_tensors="pt"
+                ).to("cuda")
 
-#                 q_emb = q_encoder(**q_inputs).to("cpu").numpy()
-#                 q_embs.append(q_emb)
-#             q_embs = torch.Tensor(q_embs).squeeze()
+                q_emb = q_encoder(**q_inputs).to("cpu").numpy()
+                q_embs.append(q_emb)
+            q_embs = torch.Tensor(q_embs).squeeze()
             
-#         dot_prod = torch.matmul(q_embs,torch.transpose(p_embs,0,1))
-#         doc_scores, doc_indices = torch.sort(dot_prod, dim = 1, descending = True)
+        dot_prod = torch.matmul(q_embs,torch.transpose(p_embs,0,1))
+        doc_scores, doc_indices = torch.sort(dot_prod, dim = 1, descending = True)
 
-#         return doc_scores[:,:k], doc_indices[:,:k]
+        return doc_scores[:,:k], doc_indices[:,:k]
 
 # measuring topk retrieval performance
 if __name__ == "__main__":
@@ -358,23 +375,32 @@ if __name__ == "__main__":
     #                     tokenizer=tokenizer,p_encoder=p_enc,q_encoder=q_enc)
 
     # tokenizer = AutoTokenizer.from_pretrained('monologg/kobigbird-bert-base')
-    if retriever_args.spr_tokenizer == None:
+    if retriever_args.spr_tokenizer == 'none':
         tokenizer = None
     elif retriever_args.spr_tokenizer == 'klue':
-        tokenizer = AutoTokenizer.from_pretrained('klue/bert-base')
+        tokenizer = AutoTokenizer.from_pretrained('klue/bert-base').tokenize
     elif retriever_args.spr_tokenizer == 'bigbird':
-            tokenizer = AutoTokenizer.from_pretrained('monologg/kobigbird-bert-base')
-    elif retriever_args.spr_tokenizer == 'kobert':
-            tokenizer = AutoTokenizer.from_pretrained('monologg/kobert')
+        tokenizer = AutoTokenizer.from_pretrained('monologg/kobigbird-bert-base').tokenize
+    elif retriever_args.spr_tokenizer == 'kobert_m':
+        tokenizer = AutoTokenizer.from_pretrained('monologg/kobert').tokenize
+    elif retriever_args.spr_tokenizer == 'kobert_s':
+        tokenizer = AutoTokenizer.from_pretrained('skt/kobert-base-v1').tokenize
+    elif retriever_args.spr_tokenizer == 'bert_multi':
+        tokenizer = AutoTokenizer.from_pretrained('bert-base-multilingual-uncased').tokenize
     else:
         raise ValueError('Plug in a tokenizer of choice; refer to arguments.py')
 
 
 
-    retriever = SparseRetrieval_TFIDF(tokenize_fn=tokenizer) 
-    retriever.get_sparse_embedding()
+    # retriever = SparseRetrieval_TFIDF(tokenize_fn=tokenizer) 
+    # retriever.get_sparse_embedding()
+    retriever = SparseRetrieval_BM25(tokenize_fn=tokenizer, file_suffix = retriever_args.file_suffix) 
+    retriever.get_sparse_embedding_bm25(bm25_type = retriever_args.bm25_type)
+
     df =  retriever.retrieve(test_set,topk = 10)
     # print(len(df))
-
+    print('#'*30)
+    print(f'Retriever Info: BM25_{retriever_args.spr_tokenizer}_{retriever_args.bm25_type}')
     print(retriever_prec_k([1,3,5,10], df))
+    print('#'*30)
 

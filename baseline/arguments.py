@@ -38,6 +38,17 @@ class RetrieverArguments(BaseArguments):
     - DenseRetrieval
     
     """
+
+    bm25_type: str = "plus"
+    """
+    - plus
+    - okapi
+    - l
+    """
+
+    file_suffix: str = ''
+    """ file name fill-in  """
+
     spr_tokenizer: str = None
     """ 
     Tokenizer setting for sparse retriever 
