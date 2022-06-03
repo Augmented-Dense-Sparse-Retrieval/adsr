@@ -46,6 +46,10 @@ class RetrieverArguments(BaseArguments):
     - l
     """
 
+    max_features: int = None
+    """ maximum features for TFIDF Vectorizer """
+
+
     file_suffix: str = ''
     """ file name fill-in  """
 

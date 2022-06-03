@@ -165,7 +165,10 @@ class SparseRetrieval_BM25:
 
 class SparseRetrieval_TFIDF:
     def __init__(self, tokenize_fn,data_path: Optional[str] = "../data/",
-        context_path: Optional[str] = "wikipedia_documents.json") -> NoReturn:
+        context_path: Optional[str] = "wikipedia_documents.json",
+        file_suffix: Optional[str] = '',
+        max_features: Optional[int] = None,
+        ) -> NoReturn:
 
         """Passage 파일을 불러오고 TfidfVectorizer를 선언"""
 
@@ -181,17 +184,18 @@ class SparseRetrieval_TFIDF:
         # Transform by vectorizer
         self.tfidfv = TfidfVectorizer(
             tokenizer=tokenize_fn,
-            ngram_range=(1, 4),
-            # max_features=50000,
+            ngram_range=(1, 2),
+            max_features=max_features,
         )
 
         self.p_embedding = None 
+        self.file_suffix = file_suffix
 
     def get_sparse_embedding(self) -> NoReturn:
         """Create or import embeddings"""
 
-        pickle_name = f"sparse_embeddingadd.bin"
-        tfidfv_name = f"tfidvadd.bin"
+        pickle_name = f"sparse_embedding{self.file_suffix}.bin"
+        tfidfv_name = f"tfidv{self.file_suffix}.bin"
         emd_path = os.path.join(self.data_path, pickle_name)
         tfidfv_path = os.path.join(self.data_path, tfidfv_name)
 
@@ -246,7 +250,7 @@ class SparseRetrieval_TFIDF:
                 total.append(tmp)
 
             cqas = pd.DataFrame(total)
-            cqas.to_csv('example.csv')
+            # cqas.to_csv('example.csv')
             return cqas
 
 
@@ -392,15 +396,18 @@ if __name__ == "__main__":
 
 
 
-    # retriever = SparseRetrieval_TFIDF(tokenize_fn=tokenizer) 
-    # retriever.get_sparse_embedding()
-    retriever = SparseRetrieval_BM25(tokenize_fn=tokenizer, file_suffix = retriever_args.file_suffix) 
-    retriever.get_sparse_embedding_bm25(bm25_type = retriever_args.bm25_type)
+    retriever = SparseRetrieval_TFIDF(tokenize_fn=tokenizer,
+                                    file_suffix = retriever_args.file_suffix,
+                                    max_features = retriever_args.max_features) 
+    retriever.get_sparse_embedding()
+    # retriever = SparseRetrieval_BM25(tokenize_fn=tokenizer, file_suffix = retriever_args.file_suffix) 
+    # retriever.get_sparse_embedding_bm25(bm25_type = retriever_args.bm25_type)
 
     df =  retriever.retrieve(test_set,topk = 10)
     # print(len(df))
     print('#'*30)
-    print(f'Retriever Info: BM25_{retriever_args.spr_tokenizer}_{retriever_args.bm25_type}')
+    print(f'Retriever Info: TFIDF_ng2_{retriever_args.spr_tokenizer}_{100*int(retriever_args.file_suffix[2:])}%')
+    # print(f'Retriever Info: TFIDF_BM25_{retriever_args.spr_tokenizer}_{retriever_args.bm25_type}')
     print(retriever_prec_k([1,3,5,10], df))
     print('#'*30)
 
