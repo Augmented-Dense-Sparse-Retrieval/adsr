@@ -31,9 +31,9 @@ class DatasetArguments(BaseArguments):
 class RetrieverArguments(BaseArguments):
     """Retriever Arguments"""
 
-    retriever_type: str = "SparseRetrieval_BM25P"
+    retriever_type: str = "SparseRetrieval_BM25"
     """
-    - SparseRetrieval_BM25P
+    - SparseRetrieval_BM25
     - SparseRetrieval_TFIDF
     - DenseRetrieval
     
@@ -53,7 +53,7 @@ class RetrieverArguments(BaseArguments):
     file_suffix: str = ''
     """ file name fill-in  """
 
-    spr_tokenizer: str = None
+    spr_tokenizer: str = 'none'
     """ 
     Tokenizer setting for sparse retriever 
     - klue
@@ -63,28 +63,28 @@ class RetrieverArguments(BaseArguments):
     
     """
 
-    run_name: str = 'exp' 
+    run_name: str = 'n_' 
     """train run name for wandb"""
 
     retriever_dir: str = './models/retriever' 
     """directory of retriever"""
 
-    top_k_retrieval: int = 1
+    top_k_retrieval: int = 10
     """numb top-k passages to retrieve"""
 
-    dpr_model: str = "monologg/kobigbird-bert-base"
+    dpr_model: str = "klue/bert-base"
     """path to pretrained model or model identifier from huggingface.co/models"""    
 
-    dpr_learning_rate: float = 3e-5
+    dpr_learning_rate: float = 2e-5
     """learning rate for DPR fine-tuning"""
 
-    dpr_train_batch: int = 1
+    dpr_train_batch: int = 8
     """train batch size for DPR fine-tuning"""
 
-    dpr_eval_batch: int = 1
+    dpr_eval_batch: int = 128
     """eval batch size for DPR fine-tuning"""
 
-    dpr_epochs: int = 3
+    dpr_epochs: int = 5
     """numb of epochs for DPR fine-tuning"""
 
     dpr_weight_decay: float = 0.01

@@ -10,6 +10,7 @@ from rank_bm25 import BM25Okapi, BM25L, BM25Plus
 
 from tqdm.auto import tqdm
 from contextlib import contextmanager
+from torch.utils.data import DataLoader, TensorDataset
 from typing import List, Tuple, NoReturn, Any, Optional, Union
 
 from datasets import (
@@ -24,6 +25,7 @@ from train_dpr import Dense, BertEncoder, get_dense_args, preprocess
 from utils import retriever_prec_k
 from transformers import AutoTokenizer, HfArgumentParser
 from arguments import RetrieverArguments
+
 
 
 @contextmanager
@@ -298,7 +300,7 @@ class DenseRetrieval(Dense):
                     "question": example["question"],
                     "id": example["id"],
                     "context_id": doc_indices[idx],
-                    "context": " ".join([self.contexts[pid] for pid in doc_indices[idx]]),
+                    "context": "<SEP>".join([self.contexts[pid] for pid in doc_indices[idx]]),
                 }
                 if "context" in example.keys() and "answers" in example.keys():
                     # if validation set
@@ -306,9 +308,8 @@ class DenseRetrieval(Dense):
                     tmp["answers"] = example["answers"]
                 
                 total.append(tmp)
-
             cqas = pd.DataFrame(total)
-            # cqas.to_csv('retrieved_contexts.csv') # if neccessary
+            cqas.to_csv('dpr_example.csv') # if neccessary
             return cqas 
 
     def get_relevant_doc_bulk_dpr(
@@ -332,7 +333,8 @@ class DenseRetrieval(Dense):
             p_encoder.eval()
             q_encoder.eval()
 
-            p_embs = []
+            p_embs = np.empty((len(self.contexts), 768))
+            i = 0
             for p in self.contexts:
                 p_inputs = self.tokenizer(
                     p,
@@ -342,10 +344,12 @@ class DenseRetrieval(Dense):
                 ).to("cuda")
             
                 p_emb = p_encoder(**p_inputs).to("cpu").numpy()
-                p_embs.append(p_emb)
-            p_embs = torch.Tensor(p_embs).squeeze()
-
-            q_embs = []
+                p_embs[i] = p_emb
+                i += 1
+            p_embs = torch.Tensor(p_embs)
+            
+            q_embs = np.empty((len(queries), 768))
+            i = 0
             for q in queries:
                 q_inputs = self.tokenizer(
                     q,
@@ -355,13 +359,85 @@ class DenseRetrieval(Dense):
                 ).to("cuda")
 
                 q_emb = q_encoder(**q_inputs).to("cpu").numpy()
-                q_embs.append(q_emb)
-            q_embs = torch.Tensor(q_embs).squeeze()
+                q_embs[i] = q_emb
+                i += 1
+            q_embs = torch.Tensor(q_embs)
             
         dot_prod = torch.matmul(q_embs,torch.transpose(p_embs,0,1))
         doc_scores, doc_indices = torch.sort(dot_prod, dim = 1, descending = True)
 
         return doc_scores[:,:k], doc_indices[:,:k]
+    # def get_relevant_doc_bulk_dpr(
+    #         self, queries, k= 1, args=None, p_encoder=None, q_encoder=None
+    #     ):
+    #         """top k 개의 score & indice를 반환"""
+    #         if args is None:
+    #             args = self.args
+    #         if p_encoder is None:
+    #             p_encoder = self.p_encoder
+    #         if q_encoder is None:
+    #             q_encoder = self.q_encoder
+    #         batch_size = args.per_device_eval_batch_size
+            
+    #         p_encoder.to('cuda')
+    #         q_encoder.to('cuda')
+
+    #         # passage dataloader
+    #         p_tokenized = self.tokenizer(
+    #                     self.contexts,
+    #                     padding="max_length",
+    #                     truncation=True,
+    #                     return_tensors="pt"
+    #                 )
+    #         p_dataset = TensorDataset(p_tokenized['input_ids'], p_tokenized['attention_mask'], p_tokenized['token_type_ids'])
+    #         passage_dataloader = DataLoader(p_dataset,batch_size = batch_size)
+
+    #         q_tokenized = self.tokenizer(
+    #                     queries,
+    #                     padding="max_length",
+    #                     truncation=True,
+    #                     return_tensors="pt"
+    #                 )
+    #         q_dataset = TensorDataset(q_tokenized['input_ids'], q_tokenized['attention_mask'], q_tokenized['token_type_ids'])
+    #         query_dataloader = DataLoader(q_dataset,batch_size = batch_size)
+
+    #         doc_scores = []
+    #         doc_indices = []
+
+    #         with torch.no_grad():
+    #             self.p_encoder.eval()
+    #             self.q_encoder.eval()
+
+    #             p_embs = []
+    #             for batch in tqdm(passage_dataloader):
+    #                 batch = tuple(t.to(args.device) for t in batch)
+                        
+    #                 p_inputs = {
+    #                         "input_ids": batch[0],
+    #                         "attention_mask": batch[1],
+    #                         "token_type_ids": batch[2]
+    #                 }
+    #                 p_outputs = self.p_encoder(**p_inputs).to("cpu")
+    #                 p_embs.append(p_outputs)
+    #             p_embs = torch.stack(p_embs, dim=0).view(len(passage_dataloader.dataset), -1)
+
+    #             q_embs = []
+    #             for batch in tqdm(query_dataloader):
+    #                 batch = tuple(t.to(args.device) for t in batch)
+    #                 q_inputs = {
+    #                         "input_ids": batch[0],
+    #                         "attention_mask": batch[1],
+    #                         "token_type_ids": batch[2]
+    #                 }
+    #                 q_outputs = self.q_encoder(**q_inputs).to("cpu")
+    #                 q_embs.append(q_outputs)
+    #             q_embs = torch.stack(q_embs, dim=0).view(len(query_dataloader.dataset), -1)
+
+                
+    #         dot_prod = torch.matmul(q_embs,torch.transpose(p_embs,0,1))
+    #         doc_scores, doc_indices = torch.sort(dot_prod, dim = 1, descending = True)
+
+    #         return doc_scores[:,:k], doc_indices[:,:k]
 
 # measuring topk retrieval performance
 if __name__ == "__main__":
@@ -374,11 +450,7 @@ if __name__ == "__main__":
     print("*" * 40, "query dataset", "*" * 40)
     # print(full_ds)
 
-    # args, tokenizer, p_enc, q_enc = get_dense_args(retriever_args)
-    # retriever = DenseRetrieval(args=args,dataset=full_ds, 
-    #                     tokenizer=tokenizer,p_encoder=p_enc,q_encoder=q_enc)
 
-    # tokenizer = AutoTokenizer.from_pretrained('monologg/kobigbird-bert-base')
     if retriever_args.spr_tokenizer == 'none':
         tokenizer = None
     elif retriever_args.spr_tokenizer == 'klue':
@@ -396,17 +468,22 @@ if __name__ == "__main__":
 
 
 
-    retriever = SparseRetrieval_TFIDF(tokenize_fn=tokenizer,
-                                    file_suffix = retriever_args.file_suffix,
-                                    max_features = retriever_args.max_features) 
-    retriever.get_sparse_embedding()
+    # retriever = SparseRetrieval_TFIDF(tokenize_fn=tokenizer,
+    #                                 file_suffix = retriever_args.file_suffix,
+    #                                 max_features = retriever_args.max_features) 
+    # retriever.get_sparse_embedding()
     # retriever = SparseRetrieval_BM25(tokenize_fn=tokenizer, file_suffix = retriever_args.file_suffix) 
     # retriever.get_sparse_embedding_bm25(bm25_type = retriever_args.bm25_type)
-
+    args, tokenizer, p_enc, q_enc = get_dense_args(retriever_args)
+    
+    tokenizer = AutoTokenizer.from_pretrained('klue/bert-base')
+    retriever = DenseRetrieval(args=args,dataset=test_set, 
+                        tokenizer=tokenizer,p_encoder=p_enc,q_encoder=q_enc)
+ 
     df =  retriever.retrieve(test_set,topk = 10)
     # print(len(df))
     print('#'*30)
-    print(f'Retriever Info: TFIDF_ng2_{retriever_args.spr_tokenizer}_{100*int(retriever_args.file_suffix[2:])}%')
+    # print(f'Retriever Info: TFIDF_ng2_{retriever_args.spr_tokenizer}_{100*int(retriever_args.file_suffix[2:])}%')
     # print(f'Retriever Info: TFIDF_BM25_{retriever_args.spr_tokenizer}_{retriever_args.bm25_type}')
     print(retriever_prec_k([1,3,5,10], df))
     print('#'*30)

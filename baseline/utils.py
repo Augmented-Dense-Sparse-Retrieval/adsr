@@ -1,3 +1,5 @@
+
+
 def retriever_prec_k(topk_list, retrieved_df):
         result_dict = {}
         count = [0]*len(topk_list)
@@ -13,6 +15,6 @@ def retriever_prec_k(topk_list, retrieved_df):
 
         # compute precision at each k
         for ind, k in enumerate(topk_list):        
-            result_dict[f'P@{k}'] = f'{round(count[ind]/len(df)*100,1)}%'
+            result_dict[f'P@{k}'] = f'{round(count[ind]/len(retrieved_df)*100,1)}%'
 
         return result_dict

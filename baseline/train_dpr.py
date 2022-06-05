@@ -82,7 +82,7 @@ def preprocess(context):
 class Dense:
     """기본 Dense Class"""
     def __init__(self, args, dataset,
-        tokenizer, p_encoder, q_encoder,  data_path: Optional[str] = "./data/",
+        tokenizer, p_encoder, q_encoder,  data_path: Optional[str] = "../data/",
         context_path: Optional[str] = "wikipedia_documents.json"
     ):
         self.args = args
@@ -95,10 +95,7 @@ class Dense:
         with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
             wiki = json.load(f)
 
-        # self.contexts = list(dict.fromkeys([v["text"] for v in wiki.values()]))
-        self.contexts = list(dict.fromkeys([v["title"] + ": " + v["text"] for v in wiki.values()]))
-
-        self.contexts =  list(map(preprocess,self.contexts))
+        self.contexts = list(dict.fromkeys([v["text"] for v in wiki.values()]))
         self.ids = list(range(len(self.contexts)))
 
 
@@ -133,9 +130,11 @@ class DenseTrain(Dense):
             dataset = self.dataset
         if tokenizer is None:
             tokenizer = self.tokenizer
-        
+
+        # train = load_from_dataset()
+        dataset = dataset.train_test_split(test_size=0.1)
         train_data = dataset['train']
-        valid_data = dataset['validation']
+        valid_data = dataset['test']
 
         q_seqs_t = tokenizer(train_data['question'],padding = "max_length",truncation = True,return_tensors = 'pt')
         p_seqs_t = tokenizer(train_data['context'],padding = "max_length",truncation = True,return_tensors = 'pt')
@@ -154,10 +153,14 @@ class DenseTrain(Dense):
         )
 
         train_sampler = RandomSampler(train_dataset)
-        self.train_dataloader = DataLoader(train_dataset,sampler = train_sampler,batch_size = self.args.per_device_train_batch_size)
+        self.train_dataloader = DataLoader(train_dataset,sampler = train_sampler,
+                                    num_workers = 0, drop_last = True,
+                                    batch_size = self.args.per_device_train_batch_size)
 
         val_sampler = RandomSampler(val_dataset)
-        self.val_dataloader = DataLoader(val_dataset,sampler = val_sampler,batch_size = self.args.per_device_eval_batch_size)
+        self.val_dataloader = DataLoader(val_dataset,sampler = val_sampler,
+                                    num_workers = 0, drop_last = True,
+                                    batch_size = self.args.per_device_eval_batch_size)
 
     
     # customized trainer
@@ -203,7 +206,7 @@ class DenseTrain(Dense):
                     self.p_encoder.train()
                     self.q_encoder.train()
             
-                    targets = torch.arange(0, args.per_device_train_batch_size).long()
+                    targets = torch.arange(0, batch_size).long()
                     targets = targets.to(args.device)
 
                     p_inputs = {
@@ -225,7 +228,7 @@ class DenseTrain(Dense):
                     sim_scores = F.log_softmax(sim_scores, dim=1)
                     _, preds = torch.max(sim_scores, 1)
 
-                    acc = torch.sum(preds.cpu() == targets.cpu())
+                    acc = torch.sum(preds.cpu() == targets.cpu())/batch_size
                     loss = F.nll_loss(sim_scores, targets)
                     # print(loss, acc)
 
@@ -243,8 +246,8 @@ class DenseTrain(Dense):
                     
 
                     if global_step % args.eval_steps == 0:
-                        train_loss /= float(batch_size*cnt)
-                        train_acc /= float(batch_size*cnt)
+                        train_loss /= float(cnt)
+                        train_acc /= float(cnt)
                         lr_ = scheduler.get_last_lr()[0]
 
                         val_loss, val_acc = self.validation()
@@ -277,7 +280,7 @@ class DenseTrain(Dense):
         for step, batch in enumerate(epoch_iterator):
             with torch.no_grad():
 
-                targets = torch.arange(0, args.per_device_train_batch_size).long()
+                targets = torch.arange(0, batch_size).long()
                 targets = targets.to(args.device)
 
                 p_inputs = {
@@ -299,17 +302,17 @@ class DenseTrain(Dense):
                 sim_scores = F.log_softmax(sim_scores, dim=1)
                 _, preds = torch.max(sim_scores, 1)
 
-                acc = torch.sum(preds.cpu() == targets.cpu())
+                acc = torch.sum(preds.cpu() == targets.cpu())/batch_size
                 loss = F.nll_loss(sim_scores, targets)
-                # print(loss, acc)
+                print(loss, acc)
 
                 loss_total += loss
                 acc_total += acc
                 cnt +=1
                 torch.cuda.empty_cache()
 
-        val_loss = loss_total/float(batch_size*cnt)
-        val_acc = acc_total/float(batch_size*cnt)
+        val_loss = loss_total/float(cnt)
+        val_acc = acc_total/float(cnt)
         return val_loss, val_acc
     
 
@@ -328,7 +331,7 @@ def main():
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
-    datasets = load_from_disk(os.path.join(data_args.dataset_path , 'train_dataset'))
+    datasets = load_from_disk(os.path.join(data_args.dataset_path , 'train'))
     args, tokenizer, p_encoder, q_encoder = get_dense_args(retriever_args)
     p_encoder = p_encoder.to(args.device)
     q_encoder = q_encoder.to(args.device)
@@ -350,7 +353,7 @@ def main():
 
     p_encoder, q_encoder = retriever.train()
 
-    model_dir = './models/retriever'
+    model_dir = f'./models/retriever_{args.run_name}'
 
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
