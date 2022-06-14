@@ -41,9 +41,8 @@ def retrieve_all(q, p):
             ),
         }
         if "context" in example.keys() and "answers" in example.keys():
-        #     # if validation set
             tmp["original_context"] = example["context"]
-            # tmp["answers"] = example["answers"]
+
         total.append(tmp)
     cqas = pd.DataFrame(total)
 
@@ -61,9 +60,7 @@ def retriever_prec_k(topk_list, retrieved_df):
         for order, k in enumerate(topk_list):
             if gold_answer in contexts[:k]: 
                 count[order] += 1
-    # print(count)
 
-    # compute precision at each k
     for ind, k in enumerate(topk_list):        
         result_dict[f'P@{k}'] = f'{round(count[ind]/len(retrieved_df)*100,1)}%'
 
