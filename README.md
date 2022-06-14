@@ -19,9 +19,12 @@ The dataset is
 $ python train_dpr.py --run_name [name of run] --dpr_epochs [# of epoch]
 ```
 
-## Evaluate
-### 1. Evaluate Dense / Sparse Embedding
+## Retrieve and Evaluate
+### 1. Retrieve and Evaluate Dense / Sparse Embedding
 ```
 $ python retrieval.py --retrieve_dir [model directory]
 ```
-### 3. Evaluate Augmented Embedding
+### 2. Evaluate Augmented Embedding
+```
+$ python augment_retrieval.py --retrieve_dir [model directory]
+```
