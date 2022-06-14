@@ -24,8 +24,13 @@ $ python train_dpr.py --run_name [name of run] --dpr_epochs [# of epoch]
 ```
 $ python retrieval.py --retrieve_dir [model directory]
 ```
-### 2. Evaluate Augmented Embedding
+### 2. Evaluate ADSR-C
 You have to run dense / sparse retrieval prior to running to following code.
 ```
-$ python augment_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
+$ python augment_cat_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
+```
+### 3. Evaluate ADSR-S
+You have to run dense / sparse retrieval prior to running to following code.
+```
+$ python augment_sum_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
 ```
