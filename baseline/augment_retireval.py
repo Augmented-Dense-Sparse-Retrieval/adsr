@@ -35,68 +35,68 @@ def retriever_prec_k(topk_list, retrieved_df):
     return result_dict
 
 if __name__ == "__main__:
-tokenize_fn = AutoTokenizer.from_pretrained('klue/bert-base')
+    tokenize_fn = AutoTokenizer.from_pretrained('klue/bert-base')
 
-tfidfv = TfidfVectorizer(
-            tokenizer=tokenize_fn.tokenize,
-            ngram_range=(1, 2),
-            max_features=534298,
-        )
+    tfidfv = TfidfVectorizer(
+                tokenizer=tokenize_fn.tokenize,
+                ngram_range=(1, 2),
+                max_features=534298,
+            )
 
-context_path = sys.argv[1]
-data_path = sys.argv[2]
-with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
-    wiki = json.load(f)
-    
-contexts = list(dict.fromkeys([v["text"] for v in wiki.values()]))
-test_set = load_from_disk(sys.argv[3])
-queries = test_set["question"]
+    context_path = sys.argv[1]
+    data_path = sys.argv[2]
+    with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
+        wiki = json.load(f)
 
-c = tfidfv.fit_transform(contexts)
-q = tfidfv.transform(queries)
-with open(sys.argv[4], "rb") as file:
-    p_emb = pickle.load(file)
-with open(sys.argv[5], "rb") as file:
-    q_emb = pickle.load(file)
-    
-p_norm = np.linalg.norm(p_emb, axis=1)
-q_norm = np.linalg.norm(q_emb, axis=1)
-p_emb /= p_norm[:, np.newaxis]
-q_emb /= q_norm[:, np.newaxis]
+    contexts = list(dict.fromkeys([v["text"] for v in wiki.values()]))
+    test_set = load_from_disk(sys.argv[3])
+    queries = test_set["question"]
 
-aug_p_2 = hstack((p_emb, c))
-aug_q_2 = hstack((q_emb, q))
+    c = tfidfv.fit_transform(contexts)
+    q = tfidfv.transform(queries)
+    with open(sys.argv[4], "rb") as file:
+        p_emb = pickle.load(file)
+    with open(sys.argv[5], "rb") as file:
+        q_emb = pickle.load(file)
 
+    p_norm = np.linalg.norm(p_emb, axis=1)
+    q_norm = np.linalg.norm(q_emb, axis=1)
+    p_emb /= p_norm[:, np.newaxis]
+    q_emb /= q_norm[:, np.newaxis]
 
-k = 10
-
-result = aug_q_2 * aug_p_2.T
-if not isinstance(result, np.ndarray):
-    result = result.toarray()
-doc_scores = []
-doc_indices = []
-for i in range(result.shape[0]):
-    sorted_result = np.argsort(result[i, :])[::-1]
-    doc_scores.append(result[i, :][sorted_result].tolist()[:k])
-    doc_indices.append(sorted_result.tolist()[:k])
-    
-    
-total = []
-for idx, example in tqdm(enumerate(test_set)):
-    tmp = {
-        "question": example["question"],
-        "id": example["id"],
-        "context_id": doc_indices[idx],
-        "context": "<SEP>".join(
-            [contexts[pid] for pid in doc_indices[idx]]
-        ),
-    }
-    if "context" in example.keys() and "answers" in example.keys():
-    #     # if validation set
-        tmp["original_context"] = example["context"]
-        # tmp["answers"] = example["answers"]
-    total.append(tmp)
-cqas = pd.DataFrame(total)
+    aug_p_2 = hstack((p_emb, c))
+    aug_q_2 = hstack((q_emb, q))
 
 
-print(retriever_prec_k([1,3,5,10], cqas))
+    k = 10
+
+    result = aug_q_2 * aug_p_2.T
+    if not isinstance(result, np.ndarray):
+        result = result.toarray()
+    doc_scores = []
+    doc_indices = []
+    for i in range(result.shape[0]):
+        sorted_result = np.argsort(result[i, :])[::-1]
+        doc_scores.append(result[i, :][sorted_result].tolist()[:k])
+        doc_indices.append(sorted_result.tolist()[:k])
+
+
+    total = []
+    for idx, example in tqdm(enumerate(test_set)):
+        tmp = {
+            "question": example["question"],
+            "id": example["id"],
+            "context_id": doc_indices[idx],
+            "context": "<SEP>".join(
+                [contexts[pid] for pid in doc_indices[idx]]
+            ),
+        }
+        if "context" in example.keys() and "answers" in example.keys():
+        #     # if validation set
+            tmp["original_context"] = example["context"]
+            # tmp["answers"] = example["answers"]
+        total.append(tmp)
+    cqas = pd.DataFrame(total)
+
+
+    print(retriever_prec_k([1,3,5,10], cqas))
