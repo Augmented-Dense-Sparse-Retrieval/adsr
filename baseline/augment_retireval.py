@@ -14,6 +14,41 @@ import pandas as pd
 from tqdm.auto import tqdm
 from scipy.sparse import hstack
 
+def normalize(emb):
+    norm = np.linalg.norm(emb, axis=1)
+    return emb /= norm[:, np.newaxis)
+                       
+def retrieve_all(q, p):
+    k = 10
+    result = q * p.T
+    if not isinstance(result, np.ndarray):
+        result = result.toarray()
+    doc_scores = []
+    doc_indices = []
+    for i in range(result.shape[0]):
+        sorted_result = np.argsort(result[i, :])[::-1]
+        doc_scores.append(result[i, :][sorted_result].tolist()[:k])
+        doc_indices.append(sorted_result.tolist()[:k])
+
+    total = []
+    for idx, example in tqdm(enumerate(test_set)):
+        tmp = {
+            "question": example["question"],
+            "id": example["id"],
+            "context_id": doc_indices[idx],
+            "context": "<SEP>".join(
+                [contexts[pid] for pid in doc_indices[idx]]
+            ),
+        }
+        if "context" in example.keys() and "answers" in example.keys():
+        #     # if validation set
+            tmp["original_context"] = example["context"]
+            # tmp["answers"] = example["answers"]
+        total.append(tmp)
+    cqas = pd.DataFrame(total)
+
+    return(cqas)
+
 
 def retriever_prec_k(topk_list, retrieved_df):
     result_dict = {}
@@ -59,44 +94,13 @@ if __name__ == "__main__:
     with open(sys.argv[5], "rb") as file:
         q_emb = pickle.load(file)
 
-    p_norm = np.linalg.norm(p_emb, axis=1)
-    q_norm = np.linalg.norm(q_emb, axis=1)
-    p_emb /= p_norm[:, np.newaxis]
-    q_emb /= q_norm[:, np.newaxis]
+    p_emb = normalize(p_emb)
+    q_emb = normalize(q_emb)
 
     aug_p_2 = hstack((p_emb, c))
     aug_q_2 = hstack((q_emb, q))
 
-
-    k = 10
-
-    result = aug_q_2 * aug_p_2.T
-    if not isinstance(result, np.ndarray):
-        result = result.toarray()
-    doc_scores = []
-    doc_indices = []
-    for i in range(result.shape[0]):
-        sorted_result = np.argsort(result[i, :])[::-1]
-        doc_scores.append(result[i, :][sorted_result].tolist()[:k])
-        doc_indices.append(sorted_result.tolist()[:k])
-
-
-    total = []
-    for idx, example in tqdm(enumerate(test_set)):
-        tmp = {
-            "question": example["question"],
-            "id": example["id"],
-            "context_id": doc_indices[idx],
-            "context": "<SEP>".join(
-                [contexts[pid] for pid in doc_indices[idx]]
-            ),
-        }
-        if "context" in example.keys() and "answers" in example.keys():
-        #     # if validation set
-            tmp["original_context"] = example["context"]
-            # tmp["answers"] = example["answers"]
-        total.append(tmp)
-    cqas = pd.DataFrame(total)
+    cqas = retrieve_all(aug_q_2, aug_p_2)
 
 
     print(retriever_prec_k([1,3,5,10], cqas))
