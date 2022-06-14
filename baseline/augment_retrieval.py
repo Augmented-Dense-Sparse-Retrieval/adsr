@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from scipy.sparse import hstack
+from utils import retriever_acc_k
 
 def normalize(emb):
     norm = np.linalg.norm(emb, axis=1)
@@ -48,24 +49,6 @@ def retrieve_all(q, p):
                        
     return cqas
 
-
-def retriever_prec_k(topk_list, retrieved_df):
-    result_dict = {}
-    count = [0]*len(topk_list)
-
-    # iterate through each passage+query pair
-    for ind, _ in enumerate(range(len(retrieved_df))):
-        contexts = retrieved_df['context'][ind].split('<SEP>')
-        gold_answer = retrieved_df['original_context'][ind]
-        for order, k in enumerate(topk_list):
-            if gold_answer in contexts[:k]: 
-                count[order] += 1
-
-    for ind, k in enumerate(topk_list):        
-        result_dict[f'P@{k}'] = f'{round(count[ind]/len(retrieved_df)*100,1)}%'
-
-    return result_dict
-
 if __name__ == "__main__:
     tokenize_fn = AutoTokenizer.from_pretrained('klue/bert-base')
 
@@ -100,4 +83,4 @@ if __name__ == "__main__:
     cqas = retrieve_all(aug_q_2, aug_p_2)
 
 
-    print(retriever_prec_k([1,3,5,10], cqas))
+    print(retriever_acc_k([1,3,5,10], cqas))
