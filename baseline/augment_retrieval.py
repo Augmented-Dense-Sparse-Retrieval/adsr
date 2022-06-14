@@ -15,40 +15,6 @@ from tqdm.auto import tqdm
 from scipy.sparse import hstack
 from utils import retriever_acc_k
 
-def normalize(emb):
-    norm = np.linalg.norm(emb, axis=1)
-    return emb /= norm[:, np.newaxis]
-                       
-def retrieve_all(q, p):
-    k = 10
-    result = q * p.T
-    if not isinstance(result, np.ndarray):
-        result = result.toarray()
-    doc_scores = []
-    doc_indices = []
-    for i in range(result.shape[0]):
-        sorted_result = np.argsort(result[i, :])[::-1]
-        doc_scores.append(result[i, :][sorted_result].tolist()[:k])
-        doc_indices.append(sorted_result.tolist()[:k])
-
-    total = []
-    for idx, example in tqdm(enumerate(test_set)):
-        tmp = {
-            "question": example["question"],
-            "id": example["id"],
-            "context_id": doc_indices[idx],
-            "context": "<SEP>".join(
-                [contexts[pid] for pid in doc_indices[idx]]
-            ),
-        }
-        if "context" in example.keys() and "answers" in example.keys():
-            tmp["original_context"] = example["context"]
-
-        total.append(tmp)
-    cqas = pd.DataFrame(total)
-                       
-    return cqas
-
 if __name__ == "__main__:
     tokenize_fn = AutoTokenizer.from_pretrained('klue/bert-base')
 
