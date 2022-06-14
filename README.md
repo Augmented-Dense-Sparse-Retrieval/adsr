@@ -11,7 +11,7 @@ $ pip install -r requirements.txt
 ```
 
 ## Dataset
-The dataset is
+Two separate datasets are utilized for our model. First, for its comprehensive yet representative traits, all the contexts passages are crawled from the 2Korean Wikipedia Dataset, consisting of a total of 60613 context passages, further preprocessed for effective retrieval. Then, we filter the 3 KLUE/MRC dataset in a {question, context} pair format for training. From the 4792 resulting pairs, we fix 15 percent as the test set and use 10 percent of the remaining data for validation.
 
 ## Training
 ### 1. Train DPR
