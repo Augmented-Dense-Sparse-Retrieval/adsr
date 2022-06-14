@@ -16,7 +16,7 @@ from scipy.sparse import hstack
 
 def normalize(emb):
     norm = np.linalg.norm(emb, axis=1)
-    return emb /= norm[:, np.newaxis)
+    return emb /= norm[:, np.newaxis]
                        
 def retrieve_all(q, p):
     k = 10
@@ -45,7 +45,7 @@ def retrieve_all(q, p):
 
         total.append(tmp)
     cqas = pd.DataFrame(total)
-
+                       
     return cqas
 
 
