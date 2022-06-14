@@ -27,10 +27,10 @@ $ python retrieval.py --retrieve_dir [model directory]
 ### 2. Evaluate ADSR-C
 You have to run dense / sparse retrieval prior to running to following code.
 ```
-$ python augment_cat_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
+$ python augmented_cat_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
 ```
 ### 3. Evaluate ADSR-S
 You have to run dense / sparse retrieval prior to running to following code.
 ```
-$ python augment_sum_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
+$ python augmented_sum_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
 ```
