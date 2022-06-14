@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from scipy.sparse import hstack
-from utils import retriever_acc_k
+from utils import *
 
 if __name__ == "__main__:
     tokenize_fn = AutoTokenizer.from_pretrained('klue/bert-base')
