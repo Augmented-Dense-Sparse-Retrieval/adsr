@@ -25,6 +25,7 @@ $ python train_dpr.py --run_name [name of run] --dpr_epochs [# of epoch]
 $ python retrieval.py --retrieve_dir [model directory]
 ```
 ### 2. Evaluate Augmented Embedding
+You have to run dense / sparse retrieval prior to running to following code.
 ```
-$ python augment_retrieval.py --retrieve_dir [model directory]
+$ python augment_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
 ```
