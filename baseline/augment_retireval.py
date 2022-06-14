@@ -47,7 +47,7 @@ def retrieve_all(q, p):
         total.append(tmp)
     cqas = pd.DataFrame(total)
 
-    return(cqas)
+    return cqas
 
 
 def retriever_prec_k(topk_list, retrieved_df):
