@@ -68,14 +68,12 @@ $ python retrieval.py --retriever_type DenseRetrieval --dpr_model [tokenizer] \
 ### 1. Evaluate ADSR-C
 You have to run dense / sparse retrieval prior to running to following code.
 ```
-$ python ADSR_C_retrieval.py [context path] [data path] \
-  [test data path] [passsage emb path] [query emb path]
+$ python ADSR_C_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
 ```
 ### 2. Evaluate ADSR-S
 You have to run dense / sparse retrieval prior to running to following code.
 ```
-$ python ADSR_S_retrieval.py [context path] [data path] \
-  [test data path] [passsage emb path] [query emb path]
+$ python ADSR_S_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
 ```
 
 
