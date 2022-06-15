@@ -33,54 +33,11 @@ from transformers import (
 )
 
 from arguments import DatasetArguments, RetrieverArguments, DefaultArguments
-
-
-# Inference 에서의 TrainingArguments 충돌방지 위해 따로 parsing
-def get_dense_args(retriever_args:RetrieverArguments):# : RetrieverArguments):
-    args = TrainingArguments(
-            output_dir="dense_retrieval",
-            evaluation_strategy="epoch",
-            learning_rate=retriever_args.dpr_learning_rate,
-            per_device_train_batch_size=retriever_args.dpr_train_batch,
-            per_device_eval_batch_size=retriever_args.dpr_eval_batch,
-            num_train_epochs=retriever_args.dpr_epochs,
-            weight_decay=retriever_args.dpr_weight_decay,
-            overwrite_output_dir = True,
-            eval_steps = retriever_args.dpr_eval_steps,
-            warmup_steps = retriever_args.dpr_warmup_steps,
-            run_name = retriever_args.run_name
-            )
-
-    retriever_dir = retriever_args.retriever_dir
-    p,q = 'p_encoder','q_encoder'
-
-    if (os.path.isdir(os.path.join(retriever_dir,p)) and os.path.isdir(os.path.join(retriever_dir,q))):
-        print('Fine-tuned DPR exists... check directory again if using model_checkpoints...')
-        config_p =  AutoConfig.from_pretrained(os.path.join(retriever_dir, p))
-        config_q =  AutoConfig.from_pretrained(os.path.join(retriever_dir, q))
-        p_encoder  = BertEncoder.from_pretrained(os.path.join(retriever_dir, p), config = config_p)
-        q_encoder = BertEncoder.from_pretrained(os.path.join(retriever_dir, q), config = config_q)
-
-    else:
-        p_encoder  = BertEncoder.from_pretrained(retriever_args.dpr_model)
-        q_encoder = BertEncoder.from_pretrained(retriever_args.dpr_model)
-        print('No fine-tuned DPR exists ... newly train Dense Passage Retriever...')
-    
-    tokenizer = AutoTokenizer.from_pretrained(retriever_args.dpr_model)
-    
-    return args, tokenizer, p_encoder, q_encoder
-
-
-def preprocess(context):
-    """   """
-    context = re.sub(r'\n', " ", context)
-    context = re.sub(r"\\n", " ", context)
-    context = re.sub(r"\*", " ", context)
-    return context
+from utils import get_dense_args, timer
 
 
 class Dense:
-    """기본 Dense Class"""
+    """Base Dense Class"""
     def __init__(self, args, dataset,
         tokenizer, p_encoder, q_encoder,  data_path: Optional[str] = "../data/",
         context_path: Optional[str] = "wikipedia_documents.json"
@@ -100,7 +57,7 @@ class Dense:
 
 
 class BertEncoder(BertPreTrainedModel):
-    """Dense Embedding 학습을 위한 Encoder Output 수정"""
+    """ Customize BERT Output for Dense Embedding """
     def __init__(self, config):
         super(BertEncoder, self).__init__(config)
         self.bert = BertModel(config)
@@ -119,19 +76,19 @@ class BertEncoder(BertPreTrainedModel):
 
 
 class DenseTrain(Dense):
-    """DPR Custom Trainer 및 Dataloader"""
+    """DPR Custom Trainer and Dataloader"""
     def __init__(self, **kwargs):
         super(DenseTrain, self).__init__(**kwargs)
         self.prepare_dataloaders()
     
-    # dataloader 생성
+    # dataloader
     def prepare_dataloaders(self,dataset = None,tokenizer = None):
         if dataset is None:
             dataset = self.dataset
         if tokenizer is None:
             tokenizer = self.tokenizer
 
-        # train = load_from_dataset()
+        # train split -> train, valid
         dataset = dataset.train_test_split(test_size=0.1)
         train_data = dataset['train']
         valid_data = dataset['test']
@@ -324,12 +281,6 @@ def main():
 
     print(f"data is from {data_args.dataset_path}")
 
-    # logging 설정
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        handlers=[logging.StreamHandler(sys.stdout)],
-    )
 
     datasets = load_from_disk(os.path.join(data_args.dataset_path , 'train'))
     args, tokenizer, p_encoder, q_encoder = get_dense_args(retriever_args)

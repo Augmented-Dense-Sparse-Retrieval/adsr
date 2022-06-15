@@ -31,12 +31,11 @@ class DatasetArguments(BaseArguments):
 class RetrieverArguments(BaseArguments):
     """Retriever Arguments"""
 
-    retriever_type: str = "SparseRetrieval_BM25"
+    retriever_type: str = "SparseRetrieval_TFIDF"
     """
-    - SparseRetrieval_BM25
     - SparseRetrieval_TFIDF
+    - SparseRetrieval_BM25
     - DenseRetrieval
-    
     """
 
     bm25_type: str = "plus"
@@ -52,6 +51,9 @@ class RetrieverArguments(BaseArguments):
 
     file_suffix: str = ''
     """ file name fill-in  """
+
+    num_neg : int = 2
+    """ number of negative samples for dpr_neg """
 
     spr_tokenizer: str = 'none'
     """ 
@@ -81,7 +83,7 @@ class RetrieverArguments(BaseArguments):
     dpr_train_batch: int = 8
     """train batch size for DPR fine-tuning"""
 
-    dpr_eval_batch: int = 128
+    dpr_eval_batch: int = 8
     """eval batch size for DPR fine-tuning"""
 
     dpr_epochs: int = 5
@@ -95,6 +97,9 @@ class RetrieverArguments(BaseArguments):
 
     dpr_warmup_steps: int = 500
     """numb of warmup steps for DPR fine-tuning"""
+
+    dpr_longsum: bool = False
+    """ using DPR Longsum """
 
 
 @dataclass
