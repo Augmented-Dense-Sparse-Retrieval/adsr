@@ -16,24 +16,30 @@ Two separate datasets are utilized for our model. First, for its comprehensive y
 ## Training
 ### 1. Train DPR_base
 ```
-$ python train_dpr.py --run_name [name of run] --dpr_epochs [# of epoch]  --file_suffix [dpr_pickle file] \
-  --dpr_train_batch [# train batch] --dpr_eval_batch [# eval batch] --dpr_learning_rate [LR]  \
-  --dpr_weight_decay [weight_decay rate] --dpr_eval_steps [# steps per evaluation] --dpr_warmup_steps [# warmup steps]
+$ python train_dpr.py --run_name [name of run] --dpr_epochs [# of epoch] \
+  --file_suffix [dpr_pickle file] --dpr_train_batch [# train batch] \
+  --dpr_eval_batch [# eval batch] --dpr_learning_rate [LR] \
+  --dpr_weight_decay [weight_decay rate] --dpr_eval_steps [# steps per evaluation] \
+  --dpr_warmup_steps [# warmup steps]
 ```
 
 ### 2. Train DPR_long-sum
 ```
-$ python train_dpr_v1.py --run_name [name of run] --dpr_epochs [# of epoch]  --file_suffix [dpr_pickle file] \
-  --dpr_train_batch [# train batch] --dpr_eval_batch [# eval batch] --dpr_learning_rate [LR]  \
-  --dpr_weight_decay [weight_decay rate] --dpr_eval_steps [# steps per evaluation] --dpr_warmup_steps [# warmup steps]
+$ python train_dpr_v1.py --run_name [name of run] --dpr_epochs [# of epoch] \
+  --file_suffix [dpr_pickle file] --dpr_train_batch [# train batch] \
+  --dpr_eval_batch [# eval batch] --dpr_learning_rate [LR]  \
+  --dpr_weight_decay [weight_decay rate] --dpr_eval_steps [# steps per evaluation] \
+  --dpr_warmup_steps [# warmup steps]
 ```
 
 
 ### 3. Train DPR_neg
 ```
-$ python train_dpr_v2.py --num_neg [# of neg samp] --run_name [name of run] --dpr_epochs [# of epoch]  --file_suffix [dpr_pickle file] \
-  --dpr_train_batch [# train batch] --dpr_eval_batch [# eval batch] --dpr_learning_rate [LR]  \
-  --dpr_weight_decay [weight_decay rate] --dpr_eval_steps [# steps per evaluation] --dpr_warmup_steps [# warmup steps]
+$ python train_dpr_v2.py --num_neg [# of neg samp] --run_name [name of run] \
+  --dpr_epochs [# of epoch]  --file_suffix [dpr_pickle file] \
+  --dpr_train_batch [# train batch] --dpr_eval_batch [# eval batch] 
+  --dpr_learning_rate [LR]  --dpr_weight_decay [weight_decay rate] \
+  --dpr_eval_steps [# steps per evaluation] --dpr_warmup_steps [# warmup steps]
 ```
 
 
@@ -62,12 +68,14 @@ $ python retrieval.py --retriever_type DenseRetrieval --dpr_model [tokenizer] \
 ### 1. Evaluate ADSR-C
 You have to run dense / sparse retrieval prior to running to following code.
 ```
-$ python ADSR_C_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
+$ python ADSR_C_retrieval.py [context path] [data path] \
+  [test data path] [passsage emb path] [query emb path]
 ```
 ### 2. Evaluate ADSR-S
 You have to run dense / sparse retrieval prior to running to following code.
 ```
-$ python ADSR_S_retrieval.py [context path] [data path] [test data path] [passsage emb path] [query emb path]
+$ python ADSR_S_retrieval.py [context path] [data path] \
+  [test data path] [passsage emb path] [query emb path]
 ```
 
 
