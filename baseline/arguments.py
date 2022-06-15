@@ -60,7 +60,9 @@ class RetrieverArguments(BaseArguments):
     Tokenizer setting for sparse retriever 
     - klue
     - bigbird
-    - kobert   (monologg)
+    - kobert_m  (monologg)
+    - kobert_s (skt)
+    - bert_multi
     -> others will RaiseError
     
     """
